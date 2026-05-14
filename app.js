@@ -101,15 +101,15 @@ const renderHabits = () => {
   container.innerHTML = '';
 
   if (state.habits.length === 0) {
-    empty.classList.remove('hidden');
-    exportSection.classList.add('hidden');
-    heatmapSection.classList.add('hidden');
+    empty.style.display = 'block';
+    exportSection.style.display = 'none';
+    heatmapSection.style.display = 'none';
     return;
   }
 
-  empty.classList.add('hidden');
-  exportSection.classList.remove('hidden');
-  heatmapSection.classList.remove('hidden');
+  empty.style.display = 'none';
+  exportSection.style.display = 'block';
+  heatmapSection.style.display = 'block';
 
   const today = todayStr();
   let totalDone = 0;
@@ -205,12 +205,12 @@ const openModal = () => {
   document.getElementById('habitNameInput').value = '';
   selectedEmoji = EMOJIS[0];
   renderEmojiPicker();
-  document.getElementById('addHabitModal').classList.remove('hidden');
+  document.getElementById('addHabitModal').style.display = 'flex';
   setTimeout(() => document.getElementById('habitNameInput').focus(), 100);
 };
 
 const closeModal = () => {
-  document.getElementById('addHabitModal').classList.add('hidden');
+  document.getElementById('addHabitModal').style.display = 'none';
 };
 
 const renderEmojiPicker = () => {
