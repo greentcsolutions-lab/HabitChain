@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HabitChain — Build Streaks That Stick</title>
+  <meta name="description" content="Visual habit streak tracker with heatmap. No login. No app. Just chains." />
+  <meta property="og:title" content="HabitChain — Build Streaks That Stick" />
+  <meta property="og:description" content="Add up to 7 habits. Track daily streaks. See your monthly heatmap. No login needed." />
+  <meta property="og:type" content="website" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- html2canvas + jsPDF for export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <!-- Tailwind config -->
+  <script>
+    tailwind.config = {
+      darkMode: ['attribute', '[data-theme="dark"]'],
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['Syne', 'sans-serif'],
+            mono: ['DM Mono', 'monospace'],
+          },
+          colors: {
+            ember: {
+              300: '#fde68a',
+              400: '#fbbf24',
+              500: '#f59e0b',
+              600: '#d97706',
+            },
+            chain: {
+              50:  '#fff8ed',
+              100: '#fef3c7',
+              900: '#0f0e0c',
+              800: '#1a1814',
+              700: '#26231c',
+              600: '#332e23',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+
+<body class="min-h-screen transition-colors duration-300 bg-chain-900 text-white font-display">
+
+  <!-- Noise texture overlay -->
+  <div class="noise-overlay" aria-hidden="true"></div>
+
+  <!-- ══════════ HEADER ══════════ -->
+  <header class="relative z-10 flex items-center justify-between px-4 sm:px-8 py-5 border-b border-white/5">
+    <div class="flex items-center gap-3">
+      <div class="chain-logo">⛓</div>
+      <div>
+        <h1 class="text-xl font-black tracking-tight text-ember-400 leading-none">HabitChain</h1>
+        <p class="text-xs text-white/30 font-mono mt-0.5">build streaks that stick</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <button id="themeToggle" title="Toggle theme"
+        class="w-9 h-9 rounded-full border border-white/10 flex items-center justify-center text-sm hover:border-ember-500/50 transition-all hover:bg-white/5 cursor-pointer">
+        🌙
+      </button>
+      <button id="shareBtn"
+        class="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full border border-ember-500/30 text-ember-400 text-sm font-mono hover:bg-ember-500/10 transition-all cursor-pointer">
+        ↗ Share
+      </button>
+    </div>
+  </header>
+
+  <!-- ══════════ MAIN ══════════ -->
+  <main class="relative z-10 max-w-4xl mx-auto px-4 sm:px-8 py-8 space-y-8">
+
+    <!-- Today banner -->
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="text-white/30 font-mono text-xs uppercase tracking-widest">Today</p>
+        <p id="todayDate" class="text-2xl font-black text-white mt-1">Loading...</p>
+      </div>
+      <div class="text-right">
+        <p class="text-white/30 font-mono text-xs uppercase tracking-widest">Done Today</p>
+        <p id="totalCompletions" class="text-2xl font-black text-ember-400 mt-1">—</p>
+      </div>
+    </div>
+
+    <!-- ── HABITS SECTION ── -->
+    <section>
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xs font-mono uppercase tracking-widest text-white/40">Your Chains</h2>
+        <button id="addHabitBtn"
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-ember-500/20 border border-ember-500/30 text-ember-400 text-xs font-mono hover:bg-ember-500/30 transition-all cursor-pointer">
+          + Add Habit
+        </button>
+      </div>
+
+      <!-- Empty state -->
+      <div id="emptyState" class="text-center py-16 border border-dashed border-white/10 rounded-2xl">
+        <p class="text-5xl mb-3">⛓️</p>
+        <p class="text-white/50 font-mono text-sm">No chains yet.</p>
+        <p class="text-white/30 font-mono text-xs mt-1">Click <span class="text-ember-400">+ Add Habit</span> to start your first streak.</p>
+      </div>
+
+      <!-- Habits list -->
+      <div id="habitsContainer" class="space-y-3"></div>
+    </section>
+
+    <!-- ── HEATMAP ── -->
+    <section id="heatmapSection" class="hidden">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xs font-mono uppercase tracking-widest text-white/40">Monthly Heatmap</h2>
+        <div class="flex items-center gap-2">
+          <button id="prevMonth"
+            class="w-7 h-7 rounded-full border border-white/10 flex items-center justify-center text-xs hover:border-ember-500/40 transition-all cursor-pointer">‹</button>
+          <span id="heatmapMonthLabel" class="text-xs font-mono text-white/60 min-w-[72px] text-center"></span>
+          <button id="nextMonth"
+            class="w-7 h-7 rounded-full border border-white/10 flex items-center justify-center text-xs hover:border-ember-500/40 transition-all cursor-pointer">›</button>
+        </div>
+      </div>
+      <div id="heatmapGrid" class="heatmap-grid rounded-2xl border border-white/5 p-4 sm:p-5 bg-white/[0.02]"></div>
+      <div class="flex items-center gap-2 mt-3 justify-end">
+        <span class="text-xs font-mono text-white/30">Less</span>
+        <div class="flex gap-1">
+          <div class="w-3 h-3 rounded-sm bg-white/5 border border-white/10"></div>
+          <div class="w-3 h-3 rounded-sm bg-amber-700/40"></div>
+          <div class="w-3 h-3 rounded-sm bg-amber-500/60"></div>
+          <div class="w-3 h-3 rounded-sm bg-amber-400/80"></div>
+          <div class="w-3 h-3 rounded-sm bg-amber-200"></div>
+        </div>
+        <span class="text-xs font-mono text-white/30">More</span>
+      </div>
+    </section>
+
+    <!-- ── QUOTE + WIN LOGGER ── -->
+    <section class="grid sm:grid-cols-2 gap-4">
+
+      <!-- Quote -->
+      <div class="quote-card rounded-2xl border border-white/5 p-5 bg-white/[0.02] flex flex-col justify-between min-h-[130px]">
+        <p id="quoteText" class="text-sm text-white/70 leading-relaxed italic"></p>
+        <div class="flex items-center justify-between mt-4">
+          <p id="quoteAuthor" class="text-xs font-mono text-ember-400/70"></p>
+          <button id="nextQuote" class="text-xs font-mono text-white/25 hover:text-ember-400 transition-colors cursor-pointer">↻ next</button>
+        </div>
+      </div>
+
+      <!-- Win logger -->
+      <div class="rounded-2xl border border-white/5 p-5 bg-white/[0.02]">
+        <p class="text-xs font-mono uppercase tracking-widest text-white/40 mb-3">Log a Win 💪</p>
+        <div class="flex gap-2">
+          <input id="winInput" type="text" placeholder="What did you crush today?" maxlength="80"
+            class="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm placeholder-white/20 font-mono focus:outline-none focus:border-ember-500/50 transition-colors" />
+          <button id="logWinBtn"
+            class="px-3 py-2 rounded-xl bg-ember-500/20 border border-ember-500/30 text-ember-400 text-sm hover:bg-ember-500/30 transition-all cursor-pointer">✓</button>
+        </div>
+        <div id="winsList" class="mt-3 space-y-1 max-h-[80px] overflow-y-auto pr-1"></div>
+      </div>
+
+    </section>
+
+    <!-- ── EXPORT / ACTIONS ── -->
+    <section id="exportSection" class="hidden pb-4">
+      <div class="flex flex-wrap gap-3 justify-center">
+        <button id="exportPng"
+          class="flex items-center gap-2 px-5 py-2.5 rounded-full border border-white/10 text-sm font-mono text-white/50 hover:border-ember-500/40 hover:text-ember-400 transition-all cursor-pointer">
+          ⬇ Export PNG
+        </button>
+        <button id="exportPdf"
+          class="flex items-center gap-2 px-5 py-2.5 rounded-full border border-white/10 text-sm font-mono text-white/50 hover:border-ember-500/40 hover:text-ember-400 transition-all cursor-pointer">
+          ⬇ Export PDF
+        </button>
+        <button id="shareBtn2"
+          class="flex items-center gap-2 px-5 py-2.5 rounded-full bg-ember-500/20 border border-ember-500/30 text-ember-400 text-sm font-mono hover:bg-ember-500/30 transition-all cursor-pointer">
+          ↗ Share Link
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ══════════ FOOTER ══════════ -->
+  <footer class="relative z-10 text-center py-8 px-4 border-t border-white/5">
+    <p class="text-xs font-mono text-white/20">
+      Created by
+      <a href="https://x.com/chrisgreen" target="_blank" rel="noopener"
+        class="text-ember-400/60 hover:text-ember-400 transition-colors">Chris Green</a>
+      &nbsp;·&nbsp; No login. No server. Streaks saved locally.
+      &nbsp;·&nbsp;
+      <a href="https://github.com" target="_blank" rel="noopener"
+        class="hover:text-white/40 transition-colors">MIT License</a>
+    </p>
+  </footer>
+
+  <!-- ══════════ ADD HABIT MODAL ══════════ -->
+  <div id="addHabitModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
+    <div class="modal-backdrop absolute inset-0 bg-black/70 backdrop-blur-sm" id="modalBackdrop"></div>
+    <div class="modal-box relative w-full max-w-sm rounded-2xl border border-white/10 bg-chain-800 p-6 shadow-2xl">
+
+      <h3 class="text-lg font-black mb-1 text-white">New Chain</h3>
+      <p class="text-xs font-mono text-white/30 mb-5">Pick an icon and name your habit.</p>
+
+      <div class="space-y-4">
+        <div>
+          <label class="text-xs font-mono text-white/40 uppercase tracking-widest block mb-2">Habit Name</label>
+          <input id="habitNameInput" type="text" placeholder="e.g. Morning run, Read 10 pages…" maxlength="40"
+            class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 font-mono focus:outline-none focus:border-ember-500/50 transition-colors" />
+        </div>
+
+        <div>
+          <label class="text-xs font-mono text-white/40 uppercase tracking-widest block mb-2">Icon</label>
+          <div id="emojiPicker" class="grid grid-cols-8 gap-1.5"></div>
+        </div>
+      </div>
+
+      <div class="flex gap-3 mt-6">
+        <button id="cancelHabitBtn"
+          class="flex-1 py-2.5 rounded-xl border border-white/10 text-sm font-mono text-white/40 hover:text-white/70 transition-colors cursor-pointer">
+          Cancel
+        </button>
+        <button id="saveHabitBtn"
+          class="flex-1 py-2.5 rounded-xl bg-ember-500 text-chain-900 text-sm font-bold hover:bg-ember-400 transition-colors cursor-pointer">
+          Start Chain →
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ TOAST ══════════ -->
+  <div id="toast"
+    class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] px-5 py-3 rounded-full bg-ember-500 text-chain-900 text-sm font-bold font-mono shadow-xl opacity-0 pointer-events-none transition-all duration-300 whitespace-nowrap">
+    🔥 Copied!
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
